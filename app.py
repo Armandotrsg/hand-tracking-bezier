@@ -194,12 +194,57 @@ def main():
             cv.circle(debug_image, point3, 30, (0,255,0), -1)
         if point4[0] != 0:
             cv.circle(debug_image, point4, 30, (255,255,0), -1)
+            # Draw the Bezier curve
+            ctrl_pts = [
+                {'x': int(point1[0]), 'y': int(point1[1]), 'z': 0},
+                {'x': int(point3[0]), 'y': int(point3[1]), 'z': 0},
+                {'x': int(point4[0]), 'y': int(point4[1]), 'z': 0},
+                {'x': int(point2[0]), 'y': int(point2[1]), 'z': 0},
+            ]
+            n_ctrl_pts = len(ctrl_pts)
+            n_bez_curve_pts = 1000
+            my_bezier(ctrl_pts, n_ctrl_pts, n_bez_curve_pts, debug_image)
 
         # 画面反映 #############################################################
         cv.imshow('Hand Gesture Recognition', debug_image)
 
     cap.release()
     cv.destroyAllWindows()
+    
+def my_bezier(ctrl_pts, n_ctrl_pts, n_bez_curve_pts, debug_image):
+    bez_curve_pt = {'x': 0, 'y': 0, 'z': 0}
+    u = 0
+    C = [0] * n_ctrl_pts
+
+    # Allocate space for binomial coefficients
+    binomial_coeffs(n_ctrl_pts - 1, C)
+
+    for k in range(n_bez_curve_pts + 1):
+        u = k / n_bez_curve_pts
+        compute_bez_pt(u, bez_curve_pt, n_ctrl_pts, ctrl_pts, C)
+        cv.circle(debug_image, (int(bez_curve_pt['x']), int(bez_curve_pt['y'])), 5, (255, 255, 255), -1)
+
+def compute_bez_pt(u, bez_pt, n_ctrl_pts, ctrl_pts, C):
+    n = n_ctrl_pts - 1
+    bez_blend_fcn = 0
+
+    bez_pt['x'] = bez_pt['y'] = bez_pt['z'] = 0
+
+    # Compute blending functions and blend control points.
+    for k in range(n_ctrl_pts):
+        bez_blend_fcn = C[k] * pow(u, k) * pow(1 - u, n - k)
+        bez_pt['x'] += ctrl_pts[k]['x'] * bez_blend_fcn
+        bez_pt['y'] += ctrl_pts[k]['y'] * bez_blend_fcn
+        bez_pt['z'] += ctrl_pts[k]['z'] * bez_blend_fcn
+
+def binomial_coeffs(n, C):
+    for k in range(n + 1):
+        # Compute n!/(k!(n - k)!).
+        C[k] = 1
+        for j in range(n, k, -1):
+            C[k] *= j
+        for j in range(n - k, 1, -1):
+            C[k] /= j
 
 
 def select_mode(key, mode):
